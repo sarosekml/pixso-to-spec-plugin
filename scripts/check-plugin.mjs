@@ -30,6 +30,14 @@ assert.match(ui, /data:image\/png;base64,/);
 assert.doesNotMatch(ui, /src="plugin-icon\.png"/);
 assert.doesNotMatch(ui, /Pixso MCP Connect|Connect Pixso to AI agent/);
 
+const settingsIcon = ui.match(/id="settings-open"[\s\S]*?<svg[^>]*>([\s\S]*?)<\/svg>/);
+assert.ok(settingsIcon, "settings button must contain its SVG icon");
+assert.equal(
+  (settingsIcon[1].match(/<path\b/g) || []).length,
+  1,
+  "settings icon must keep the original compound path intact"
+);
+
 const inlineScript = ui.match(/<script>([\s\S]*)<\/script>/);
 assert.ok(inlineScript, "ui.html must contain its inline application script");
 new vm.Script(inlineScript[1], { filename: "ui.html#script" });

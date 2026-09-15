@@ -55,4 +55,4 @@ Sandbox Pixso имеет доступ к документу, выделению,
 
 ## Сборка
 
-`scripts/build-plugin.mjs` копирует runtime-файлы в `dist/pixso-to-spec` и встраивает PNG-иконку в HTML как data URI. Это необходимо из-за null-origin iframe в Pixso 2.0, где относительная загрузка ресурсов может отличаться между dev и packaged режимами.
+PNG-логотип уже встроен в исходный `ui.html` как data URI. `scripts/build-plugin.mjs` проверяет, что встроенные байты точно соответствуют `plugin-icon.png`, и копирует runtime-файлы в `dist/pixso-to-spec`. Благодаря этому одинаково работают исходный и собранный манифесты: оба безопасны для null-origin iframe Pixso 2.0 и не зависят от разрешения относительного URL изображения.

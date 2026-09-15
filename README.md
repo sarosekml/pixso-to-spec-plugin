@@ -36,7 +36,7 @@ npm run build
 dist/pixso-to-spec/manifest.json
 ```
 
-Папка `dist/pixso-to-spec` полностью автономна: логотип встроен в UI как data URI и одновременно лежит рядом с манифестом для иконки плагина.
+Оба манифеста — исходный `src/pixso-to-spec-plugin/manifest.json` и собранный `dist/pixso-to-spec/manifest.json` — можно загружать напрямую. Логотип встроен в UI как data URI и одновременно лежит рядом с манифестом для иконки плагина.
 
 ## Использование
 

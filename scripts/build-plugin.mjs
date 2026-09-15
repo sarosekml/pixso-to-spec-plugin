@@ -14,10 +14,10 @@ const [manifest, code, ui, icon] = await Promise.all([
 ]);
 
 const iconDataUri = `data:image/png;base64,${icon.toString("base64")}`;
-const bundledUi = ui.replace('src="plugin-icon.png"', `src="${iconDataUri}"`);
+const bundledUi = ui;
 
-if (bundledUi === ui) {
-  throw new Error("Could not inline plugin-icon.png into ui.html");
+if (!bundledUi.includes(`src="${iconDataUri}"`)) {
+  throw new Error("ui.html must contain the exact plugin-icon.png as an embedded data URI");
 }
 
 await rm(outputDir, { recursive: true, force: true });
