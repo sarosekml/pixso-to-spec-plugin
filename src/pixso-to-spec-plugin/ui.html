@@ -380,7 +380,7 @@
               <span class="selection-dot" aria-hidden="true"></span>
               <span id="selection-title">No frames selected</span>
             </div>
-            <p id="selection-help" class="selection-help">Select one or more frames on the current Pixso page.</p>
+            <p id="selection-help" class="selection-help">Select one or more top-level frames on the current Pixso page.</p>
             <div id="frame-list" class="frame-list" aria-live="polite"></div>
           </div>
           <button id="export-button" class="primary-button" type="button" disabled>Export spec</button>
@@ -521,7 +521,7 @@
             ? "No frames selected"
             : frames.length + (frames.length === 1 ? " frame selected" : " frames selected");
           selectionHelp.textContent = frames.length === 0
-            ? "Select one or more frames on the current Pixso page."
+            ? "Select one or more top-level frames on the current Pixso page."
             : "Ready to export as " + state.format.toUpperCase() + ".";
           frameList.replaceChildren();
           frames.forEach(function (frame) {

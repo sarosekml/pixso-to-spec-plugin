@@ -79,11 +79,12 @@ async function loadPlugin({ selection = [], savedPreferences, fileKey = "file ke
   return { pixso, page, messages, listeners, storageWrites };
 }
 
-test("initializes the UI and enables export only for selected frames", async () => {
+test("initializes the UI and enables export only for selected top-level frames", async () => {
   const page = { id: "0:1", type: "PAGE" };
   const frame = makeFrame({ id: "12:34", name: "Checkout", page });
+  const nestedFrame = makeFrame({ id: "12:35", name: "Nested card", page: frame });
   const group = { id: "99:1", name: "Group", type: "GROUP", parent: page };
-  const runtime = await loadPlugin({ selection: [frame, group] });
+  const runtime = await loadPlugin({ selection: [frame, nestedFrame, group] });
 
   assert.equal(runtime.pixso.showUiCall.options.title, "Pixso to Spec");
   assert.equal(runtime.pixso.showUiCall.options.width, 350);
@@ -93,7 +94,27 @@ test("initializes the UI and enables export only for selected frames", async () 
   const selectionState = runtime.messages.find((message) => message.type === "selection-state");
   assert.deepEqual(
     { frameCount: selectionState.frameCount, selectionCount: selectionState.selectionCount, exportEnabled: selectionState.exportEnabled },
-    { frameCount: 1, selectionCount: 2, exportEnabled: true }
+    { frameCount: 1, selectionCount: 3, exportEnabled: true }
+  );
+  assert.deepEqual(selectionState.frames.map((selected) => selected.id), ["12:34"]);
+});
+
+test("a nested frame alone does not enable or run export", async () => {
+  const page = { id: "0:1", type: "PAGE" };
+  const outerFrame = makeFrame({ id: "20:1", name: "Screen", page });
+  const nestedFrame = makeFrame({ id: "20:2", name: "Card", page: outerFrame });
+  const runtime = await loadPlugin({ selection: [nestedFrame] });
+
+  const selectionState = runtime.messages.find((message) => message.type === "selection-state");
+  assert.equal(selectionState.frameCount, 0);
+  assert.equal(selectionState.exportEnabled, false);
+
+  runtime.messages.length = 0;
+  await runtime.pixso.ui.onmessage({ type: "request-export", format: "html" });
+  assert.equal(runtime.messages.some((message) => message.type === "export-row"), false);
+  assert.match(
+    runtime.messages.find((message) => message.type === "export-error").message,
+    /select at least one top-level frame/i
   );
 });
 

@@ -55,7 +55,12 @@ function getSelection() {
 
 function getSelectedFrames() {
   return getSelection().filter(function (node) {
-    return node && node.type === "FRAME";
+    return (
+      node &&
+      node.type === "FRAME" &&
+      node.parent &&
+      node.parent.type === "PAGE"
+    );
   });
 }
 
@@ -242,7 +247,7 @@ async function runExport(formatValue) {
   if (frames.length === 0) {
     postMessage({
       type: "export-error",
-      message: "Select at least one frame in Pixso before exporting.",
+      message: "Select at least one top-level frame in Pixso before exporting.",
     });
     publishSelection();
     return;
