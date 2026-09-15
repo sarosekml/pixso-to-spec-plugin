@@ -1,0 +1,15 @@
+{
+  "name": "pixso-to-spec-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pixso plugin that exports selected frames to Markdown or HTML specification tables.",
+  "scripts": {
+    "build": "node scripts/build-plugin.mjs",
+    "test": "node --test",
+    "check": "npm run build && node scripts/check-plugin.mjs && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Pixso to Spec",
+  "id": "pixso_to_spec",
+  "version": "1.0.0",
+  "type": "plugin",
+  "main": "code.js",
+  "ui": "ui.html",
+  "icon": "plugin-icon.png",
+  "editorType": ["pixso"],
+  "manifestVersion": 1,
+  "description": "Export selected Pixso frames as a Markdown or HTML specification table.",
+  "host": {
+    "app": "Pixso",
+    "minVersion": "1.0.0"
+  },
+  "permissions": ["currentDocument"]
+}

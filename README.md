@@ -1,0 +1,81 @@
+# Pixso to Spec
+
+Плагин Pixso для выгрузки выбранных фреймов в одну спецификацию-таблицу.
+
+## Возможности
+
+- отслеживает выделение на текущей странице и активирует `Export spec`, когда выделен хотя бы один узел типа `FRAME`;
+- экспортирует имя каждого фрейма;
+- формирует прямую ссылку Pixso на фрейм через `fileKey`, `page-id` и `item-id`;
+- ищет внутри фрейма первый текстовый слой с именем `description` без учёта регистра и выгружает его `characters`;
+- создаёт Markdown-таблицу без изображений;
+- создаёт автономный HTML-файл с JPEG-превью, встроенными как data URI;
+- сохраняет формат экспорта и выбранную светлую/тёмную тему через `pixso.clientStorage`.
+
+## Форматы
+
+| Формат | Колонка 1 | Колонка 2 | Колонка 3 |
+| --- | --- | --- | --- |
+| Markdown | Имя фрейма | Ссылка Pixso | Текст слоя `description` |
+| HTML | Имя фрейма | Ссылка Pixso + JPEG | Текст слоя `description` |
+
+Если слоя `description` нет, третья ячейка остаётся пустой. Если JPEG отдельного фрейма не удалось получить, HTML всё равно скачивается, а в соответствующей ячейке отображается предупреждение.
+
+## Сборка и установка
+
+Требуется Node.js 20 или новее. В проекте нет npm-зависимостей.
+
+```bash
+npm run build
+```
+
+После сборки подключите в Pixso development plugin манифест:
+
+```text
+dist/pixso-to-spec/manifest.json
+```
+
+Папка `dist/pixso-to-spec` полностью автономна: логотип встроен в UI как data URI и одновременно лежит рядом с манифестом для иконки плагина.
+
+## Использование
+
+1. Откройте дизайн-файл в Pixso и запустите `Pixso to Spec`.
+2. В настройках плагина выберите `Markdown (.md)` или `HTML (.html)`.
+3. Выделите один или несколько фреймов на текущей странице.
+4. Нажмите `Export spec`.
+5. Плагин скачает `<имя-документа>-spec.md` или `<имя-документа>-spec.html`.
+
+Переключатель темы — кликабельный логотип в левом верхнем углу.
+
+## Проверки
+
+```bash
+npm run check
+```
+
+Команда собирает плагин, проверяет манифест и структуру bundle, затем запускает интеграционные тесты sandbox-кода на Pixso mock.
+
+## Структура
+
+```text
+src/pixso-to-spec-plugin/
+  code.js             Pixso sandbox и доступ к документу
+  ui.html             интерфейс, генерация таблицы и скачивание
+  manifest.json       манифест плагина
+  plugin-icon.png     исходная иконка
+scripts/
+  build-plugin.mjs    автономная сборка в dist/
+  check-plugin.mjs    структурная проверка bundle
+tests/
+  plugin-runtime.test.mjs
+```
+
+Подробности по границе sandbox/UI описаны в [docs/architecture.md](docs/architecture.md).
+
+## API
+
+Реализация следует официальным контрактам Pixso Plugin API для [`pixso`](https://pixso.net/developer/en/plugin-api/api/pixso.html), [`pixso.clientStorage`](https://pixso.net/developer/en/plugin-api/api/pixso.clientStorage.html) и `FrameNode.exportAsync`.
+
+## Лицензия
+
+[MIT](LICENSE)

@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pixso to Spec</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #1e1e1e;
+        --surface: #292929;
+        --surface-hover: #343434;
+        --input: #242424;
+        --text: #f5f5f5;
+        --muted: #a4a4a4;
+        --label: #c8c8c8;
+        --border: #424242;
+        --primary: #18a0fb;
+        --primary-hover: #0d8ee0;
+        --success-bg: #193827;
+        --success-text: #69d58c;
+        --info-bg: #1a3147;
+        --info-text: #77bdff;
+        --error-bg: #471f1f;
+        --error-text: #ffaaaa;
+        --watermark: #2a2a2a;
+      }
+
+      [data-theme="light"] {
+        color-scheme: light;
+        --bg: #ffffff;
+        --surface: #f0f0f0;
+        --surface-hover: #e4e4e4;
+        --input: #fafafa;
+        --text: #1e1e1e;
+        --muted: #666666;
+        --label: #555555;
+        --border: #d2d2d2;
+        --primary: #007aff;
+        --primary-hover: #0066dd;
+        --success-bg: #e8f5e9;
+        --success-text: #27753b;
+        --info-bg: #e3f2fd;
+        --info-text: #1565c0;
+        --error-bg: #ffebee;
+        --error-text: #b4232a;
+        --watermark: #eeeeee;
+      }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+      }
+
+      body { min-height: 650px; }
+
+      button,
+      input { font: inherit; }
+
+      button:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+
+      .app {
+        position: relative;
+        min-height: 650px;
+        overflow: hidden;
+      }
+
+      .screen {
+        position: relative;
+        z-index: 1;
+        display: none;
+        min-height: 650px;
+        padding: 20px;
+      }
+
+      .screen.active {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        min-height: 40px;
+        gap: 12px;
+      }
+
+      .logo-button,
+      .icon-button {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 40px;
+        height: 40px;
+        margin: 0;
+        padding: 0;
+        color: var(--muted);
+        background: transparent;
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      .logo-button:hover,
+      .icon-button:hover {
+        color: var(--text);
+        background: var(--surface);
+      }
+
+      .logo-button img {
+        display: block;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+      }
+
+      [data-theme="light"] .logo-button img { filter: none; }
+      [data-theme="dark"] .logo-button img { filter: saturate(0.92); }
+
+      .title-block {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .title {
+        font-size: 16px;
+        line-height: 20px;
+        font-weight: 600;
+      }
+
+      .subtitle {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 16px;
+      }
+
+      .section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .eyebrow {
+        color: var(--label);
+        font-size: 12px;
+        line-height: 16px;
+        font-weight: 500;
+      }
+
+      .selection-card {
+        padding: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+
+      .selection-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 600;
+      }
+
+      .selection-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--muted);
+        border-radius: 50%;
+      }
+
+      .selection-card.ready .selection-dot { background: #42c56e; }
+
+      .selection-help {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 18px;
+      }
+
+      .frame-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .frame-chip {
+        max-width: 100%;
+        overflow: hidden;
+        padding: 4px 8px;
+        color: var(--label);
+        background: var(--input);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 11px;
+        line-height: 16px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .primary-button {
+        width: 100%;
+        height: 40px;
+        margin: 0;
+        padding: 0 16px;
+        color: #ffffff;
+        background: var(--primary);
+        border: 0;
+        border-radius: 6px;
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .primary-button:hover:not(:disabled) { background: var(--primary-hover); }
+
+      .primary-button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .status {
+        padding: 10px 12px;
+        color: var(--info-text);
+        background: var(--info-bg);
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 18px;
+        overflow-wrap: anywhere;
+      }
+
+      .status.success {
+        color: var(--success-text);
+        background: var(--success-bg);
+      }
+
+      .status.error {
+        color: var(--error-text);
+        background: var(--error-bg);
+      }
+
+      .progress {
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .progress.visible { display: flex; }
+
+      .progress-row {
+        display: flex;
+        justify-content: space-between;
+        color: var(--label);
+        font-size: 12px;
+        line-height: 16px;
+      }
+
+      .progress-track {
+        width: 100%;
+        height: 8px;
+        overflow: hidden;
+        background: var(--surface);
+        border-radius: 999px;
+      }
+
+      .progress-bar {
+        width: 0;
+        height: 100%;
+        background: var(--primary);
+        border-radius: inherit;
+        transition: width 180ms ease;
+      }
+
+      .format-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .format-option {
+        display: grid;
+        grid-template-columns: 20px 1fr;
+        gap: 10px;
+        align-items: start;
+        padding: 12px;
+        background: var(--input);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      .format-option:has(input:checked) { border-color: var(--primary); }
+
+      .format-option input {
+        width: 18px;
+        height: 18px;
+        margin: 1px 0 0;
+        accent-color: var(--primary);
+      }
+
+      .format-name {
+        display: block;
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 600;
+      }
+
+      .format-description {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 18px;
+      }
+
+      .about {
+        margin-top: auto;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 16px;
+      }
+
+      .watermark {
+        position: absolute;
+        right: -18px;
+        bottom: -10px;
+        z-index: 0;
+        width: 158px;
+        height: 176px;
+        color: var(--watermark);
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <svg class="watermark" viewBox="0 0 158 176" fill="none" aria-hidden="true">
+        <path d="M60.37 116.53c6.4 6.4 14.09 11.35 22.29 14.79v5.85c0 21.06-17.07 38.13-38.13 38.13v-74.62l15.84 15.85Z" fill="currentColor"/>
+        <path d="M105.24.19a65.74 65.74 0 1 1-40.99 112.46L.46 48.87 0 48.43l5.37-5.37a27.61 27.61 0 0 1 39.04 0l46.33 42.2a27.6 27.6 0 1 0-8.09-19.52c0 1.58.14 3.13.4 4.64L50.65 37.98A65.65 65.65 0 0 1 105.24.19Z" fill="currentColor"/>
+      </svg>
+
+      <main id="main-screen" class="screen active">
+        <header class="header">
+          <button id="theme-toggle" class="logo-button" type="button" aria-label="Toggle light and dark theme" title="Toggle light/dark theme">
+            <img src="plugin-icon.png" alt="Pixso to Spec" />
+          </button>
+          <div class="title-block">
+            <div class="title">Pixso to Spec</div>
+            <div class="subtitle">Export frame specifications</div>
+          </div>
+          <button id="settings-open" class="icon-button" type="button" aria-label="Open settings" title="Settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M19.66 8.84c0-.74-.01-.88-.05-1a1.5 1.5 0 0 0-.21-.36c-.08-.09-.2-.17-.83-.54L13.1 3.79c-.64-.37-.77-.43-.89-.46a1 1 0 0 0-.42 0c-.12.03-.25.09-.89.46L5.44 6.94c-.64.37-.76.45-.84.54-.09.1-.17.23-.21.36-.04.12-.05.27-.05 1.01v6.3c0 .74.01.89.05 1.01.04.13.12.26.21.36.08.09.2.17.84.54l5.46 3.15c.64.37.77.43.89.46a1 1 0 0 0 .42 0c.12-.03.25-.09.89-.46l5.46-3.15c.64-.37.76-.45.84-.54.09-.1.17-.23.21-.36.04-.12.05-.27.05-1.01V8.84ZM14 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm2 0a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" fill="currentColor"/>
+              <path d="M21.66 15.16c0 .6.01 1.13-.15 1.61-.13.4-.34.77-.62 1.08-.34.38-.8.64-1.33.94l-5.46 3.15c-.52.31-.97.58-1.48.69-.41.08-.83.08-1.24 0-.5-.11-.96-.38-1.48-.69l-5.46-3.15c-.53-.3-.99-.56-1.33-.94-.28-.31-.5-.68-.62-1.08-.16-.49-.15-1.02-.15-1.62v-6.3c0-.61-.01-1.14.15-1.62.13-.4.34-.77.62-1.08.34-.38.8-.64 1.33-.94L9.9 2.06c.52-.31.98-.58 1.48-.69.41-.08.83-.08 1.24 0 .51.11.96.38 1.48.69l5.47 3.15c.52.3.98.56 1.32.94.28.31.49.68.62 1.08.16.49.15 1.01.15 1.61v6.32Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </header>
+
+        <section class="section" aria-labelledby="selection-heading">
+          <div id="selection-heading" class="eyebrow">Canvas selection</div>
+          <div id="selection-card" class="selection-card">
+            <div class="selection-title">
+              <span class="selection-dot" aria-hidden="true"></span>
+              <span id="selection-title">No frames selected</span>
+            </div>
+            <p id="selection-help" class="selection-help">Select one or more frames on the current Pixso page.</p>
+            <div id="frame-list" class="frame-list" aria-live="polite"></div>
+          </div>
+          <button id="export-button" class="primary-button" type="button" disabled>Export spec</button>
+        </section>
+
+        <section id="progress" class="progress" aria-live="polite">
+          <div class="progress-row">
+            <span id="progress-label">Preparing export…</span>
+            <span id="progress-value">0%</span>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div id="progress-bar" class="progress-bar"></div>
+          </div>
+        </section>
+
+        <div id="status" class="status">Choose frames in Pixso to enable export.</div>
+      </main>
+
+      <section id="settings-screen" class="screen" aria-labelledby="settings-title">
+        <header class="header">
+          <button id="settings-back" class="icon-button" type="button" aria-label="Back">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M15.83 10H4.17M10 15.83 4.17 10 10 4.17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="title-block">
+            <div id="settings-title" class="title">Settings</div>
+            <div class="subtitle">Export format</div>
+          </div>
+        </header>
+
+        <section class="section">
+          <div class="eyebrow">Output</div>
+          <div class="format-group">
+            <label class="format-option">
+              <input type="radio" name="format" value="md" checked />
+              <span>
+                <span class="format-name">Markdown (.md)</span>
+                <span class="format-description">Table with frame name, Pixso link, and description. Images are not exported.</span>
+              </span>
+            </label>
+            <label class="format-option">
+              <input type="radio" name="format" value="html" />
+              <span>
+                <span class="format-name">HTML (.html)</span>
+                <span class="format-description">Self-contained table with Pixso links and embedded JPEG previews.</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <p class="about">Pixso to Spec <span id="plugin-version">v1.0.0</span><br />Created by Mikhail Sarosek.</p>
+      </section>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var state = {
+          format: "md",
+          theme: "dark",
+          exportEnabled: false,
+          exporting: false,
+          rows: [],
+        };
+
+        var mainScreen = document.getElementById("main-screen");
+        var settingsScreen = document.getElementById("settings-screen");
+        var exportButton = document.getElementById("export-button");
+        var selectionCard = document.getElementById("selection-card");
+        var selectionTitle = document.getElementById("selection-title");
+        var selectionHelp = document.getElementById("selection-help");
+        var frameList = document.getElementById("frame-list");
+        var progress = document.getElementById("progress");
+        var progressLabel = document.getElementById("progress-label");
+        var progressValue = document.getElementById("progress-value");
+        var progressBar = document.getElementById("progress-bar");
+        var status = document.getElementById("status");
+
+        function send(message) {
+          window.parent.postMessage({ pluginMessage: message }, "*");
+        }
+
+        function getSelectedFormat() {
+          var selected = document.querySelector('input[name="format"]:checked');
+          return selected && selected.value === "html" ? "html" : "md";
+        }
+
+        function setFormat(format) {
+          state.format = format === "html" ? "html" : "md";
+          var input = document.querySelector('input[name="format"][value="' + state.format + '"]');
+          if (input) input.checked = true;
+        }
+
+        function setTheme(theme) {
+          state.theme = theme === "light" ? "light" : "dark";
+          document.documentElement.setAttribute("data-theme", state.theme);
+        }
+
+        function savePreferences() {
+          send({
+            type: "save-preferences",
+            format: state.format,
+            theme: state.theme,
+          });
+        }
+
+        function showScreen(name) {
+          var settingsVisible = name === "settings";
+          mainScreen.classList.toggle("active", !settingsVisible);
+          settingsScreen.classList.toggle("active", settingsVisible);
+        }
+
+        function setStatus(message, tone) {
+          status.textContent = message;
+          status.className = "status" + (tone ? " " + tone : "");
+        }
+
+        function setProgress(current, total, label) {
+          var percent = total > 0 ? Math.round((current / total) * 100) : 0;
+          progress.classList.add("visible");
+          progressLabel.textContent = label;
+          progressValue.textContent = percent + "%";
+          progressBar.style.width = percent + "%";
+        }
+
+        function updateExportButton() {
+          exportButton.disabled = !state.exportEnabled || state.exporting;
+          exportButton.textContent = state.exporting ? "Exporting…" : "Export spec";
+        }
+
+        function renderSelection(message) {
+          state.exportEnabled = message.exportEnabled === true;
+          var frames = Array.isArray(message.frames) ? message.frames : [];
+          selectionCard.classList.toggle("ready", frames.length > 0);
+          selectionTitle.textContent = frames.length === 0
+            ? "No frames selected"
+            : frames.length + (frames.length === 1 ? " frame selected" : " frames selected");
+          selectionHelp.textContent = frames.length === 0
+            ? "Select one or more frames on the current Pixso page."
+            : "Ready to export as " + state.format.toUpperCase() + ".";
+          frameList.replaceChildren();
+          frames.forEach(function (frame) {
+            var chip = document.createElement("span");
+            chip.className = "frame-chip";
+            chip.textContent = frame.name || "Untitled frame";
+            chip.title = frame.name || "Untitled frame";
+            frameList.appendChild(chip);
+          });
+          if (!state.exporting) {
+            setStatus(
+              frames.length > 0
+                ? "The export will contain " + frames.length + " table row(s)."
+                : "Choose frames in Pixso to enable export.",
+              frames.length > 0 ? "success" : ""
+            );
+          }
+          updateExportButton();
+        }
+
+        function escapeHtml(value) {
+          return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
+
+        function escapeMarkdownCell(value) {
+          return String(value == null ? "" : value)
+            .replace(/\\/g, "\\\\")
+            .replace(/\|/g, "\\|")
+            .replace(/\r?\n/g, "<br>");
+        }
+
+        function markdownLink(url) {
+          return "[Open in Pixso](" + String(url).replace(/\)/g, "%29") + ")";
+        }
+
+        function buildMarkdown(meta) {
+          var lines = [
+            "# " + escapeMarkdownCell(meta.documentName) + " — Pixso spec",
+            "",
+            "| Frame | Pixso | Description |",
+            "| --- | --- | --- |",
+          ];
+          state.rows.forEach(function (row) {
+            lines.push(
+              "| " + escapeMarkdownCell(row.name) +
+              " | " + markdownLink(row.url) +
+              " | " + escapeMarkdownCell(row.description) + " |"
+            );
+          });
+          lines.push("");
+          return lines.join("\n");
+        }
+
+        function buildHtml(meta) {
+          var rows = state.rows.map(function (row) {
+            var image = row.imageDataUri
+              ? '<img src="' + escapeHtml(row.imageDataUri) + '" alt="' + escapeHtml(row.name) + '" />'
+              : '<span class="image-error">JPEG unavailable' + (row.imageError ? ": " + escapeHtml(row.imageError) : "") + "</span>";
+            return [
+              "<tr>",
+              "<td><strong>" + escapeHtml(row.name) + "</strong></td>",
+              '<td><a href="' + escapeHtml(row.url) + '" target="_blank" rel="noreferrer">Open in Pixso</a>' + image + "</td>",
+              "<td>" + escapeHtml(row.description).replace(/\r?\n/g, "<br />") + "</td>",
+              "</tr>",
+            ].join("");
+          }).join("\n");
+
+          return [
+            "<!doctype html>",
+            '<html lang="en"><head><meta charset="utf-8" />',
+            '<meta name="viewport" content="width=device-width, initial-scale=1" />',
+            "<title>" + escapeHtml(meta.documentName) + " — Pixso spec</title>",
+            "<style>",
+            "body{margin:0;padding:32px;background:#f5f6f8;color:#1e1e1e;font:14px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}",
+            ".wrap{max-width:1440px;margin:0 auto}h1{font-size:24px;margin:0 0 20px}table{width:100%;border-collapse:collapse;background:white;table-layout:fixed}",
+            "th,td{padding:14px;text-align:left;vertical-align:top;border:1px solid #d8dce3}th{background:#eef1f5;font-size:12px;text-transform:uppercase;letter-spacing:.04em}",
+            "th:nth-child(1),td:nth-child(1){width:18%}th:nth-child(2),td:nth-child(2){width:52%}th:nth-child(3),td:nth-child(3){width:30%}",
+            "a{display:inline-block;margin-bottom:10px;color:#0068d9}img{display:block;max-width:100%;height:auto;border:1px solid #e1e4e8;border-radius:6px}.image-error{display:block;color:#b4232a}",
+            "</style></head><body><div class=\"wrap\"><h1>" + escapeHtml(meta.documentName) + " — Pixso spec</h1>",
+            "<table><thead><tr><th>Frame</th><th>Pixso link &amp; preview</th><th>Description</th></tr></thead><tbody>",
+            rows,
+            "</tbody></table></div></body></html>",
+          ].join("\n");
+        }
+
+        function slugify(value) {
+          var slug = String(value || "pixso-spec")
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9а-яё_-]+/gi, "-")
+            .replace(/^-+|-+$/g, "");
+          return slug || "pixso-spec";
+        }
+
+        function download(content, filename, mimeType) {
+          var blob = new Blob([content], { type: mimeType });
+          var url = URL.createObjectURL(blob);
+          var anchor = document.createElement("a");
+          anchor.href = url;
+          anchor.download = filename;
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+          window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        }
+
+        function finishExport(message) {
+          var meta = {
+            documentName: message.documentName || "Pixso document",
+            exportedAt: message.exportedAt || new Date().toISOString(),
+          };
+          var extension = message.format === "html" ? "html" : "md";
+          var content = extension === "html" ? buildHtml(meta) : buildMarkdown(meta);
+          var filename = slugify(meta.documentName) + "-spec." + extension;
+          download(content, filename, extension === "html" ? "text/html;charset=utf-8" : "text/markdown;charset=utf-8");
+
+          state.exporting = false;
+          progress.classList.remove("visible");
+          var warnings = Array.isArray(message.warnings) ? message.warnings : [];
+          setStatus(
+            warnings.length > 0
+              ? "Downloaded " + filename + " with " + warnings.length + " JPEG warning(s)."
+              : "Downloaded " + filename + ".",
+            warnings.length > 0 ? "" : "success"
+          );
+          updateExportButton();
+        }
+
+        window.onmessage = function (event) {
+          var message = event.data && event.data.pluginMessage
+            ? event.data.pluginMessage
+            : event.data;
+          if (!message || typeof message.type !== "string") return;
+
+          if (message.type === "initialize") {
+            var preferences = message.preferences || {};
+            setFormat(preferences.format);
+            setTheme(preferences.theme);
+            document.getElementById("plugin-version").textContent = "v" + (message.pluginVersion || "1.0.0");
+            return;
+          }
+
+          if (message.type === "selection-state") {
+            renderSelection(message);
+            return;
+          }
+
+          if (message.type === "export-start") {
+            state.exporting = true;
+            state.rows = [];
+            setProgress(0, message.total, "Preparing selected frames…");
+            setStatus("Exporting " + message.total + " frame(s)…", "");
+            updateExportButton();
+            return;
+          }
+
+          if (message.type === "export-row") {
+            state.rows.push(message.row);
+            setProgress(message.current, message.total, "Exporting " + message.current + " of " + message.total + "…");
+            return;
+          }
+
+          if (message.type === "export-complete") {
+            finishExport(message);
+            return;
+          }
+
+          if (message.type === "export-error") {
+            state.exporting = false;
+            state.rows = [];
+            progress.classList.remove("visible");
+            setStatus(message.message || "Export failed.", "error");
+            updateExportButton();
+          }
+        };
+
+        document.getElementById("theme-toggle").addEventListener("click", function () {
+          setTheme(state.theme === "dark" ? "light" : "dark");
+          savePreferences();
+        });
+
+        document.getElementById("settings-open").addEventListener("click", function () {
+          showScreen("settings");
+        });
+
+        document.getElementById("settings-back").addEventListener("click", function () {
+          showScreen("main");
+          send({ type: "request-selection" });
+        });
+
+        document.querySelectorAll('input[name="format"]').forEach(function (input) {
+          input.addEventListener("change", function () {
+            state.format = getSelectedFormat();
+            savePreferences();
+          });
+        });
+
+        exportButton.addEventListener("click", function () {
+          if (!state.exportEnabled || state.exporting) return;
+          state.format = getSelectedFormat();
+          send({ type: "request-export", format: state.format });
+        });
+
+        send({ type: "request-selection" });
+      })();
+    </script>
+  </body>
+</html>
