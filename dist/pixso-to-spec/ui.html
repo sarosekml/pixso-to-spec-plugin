@@ -91,6 +91,13 @@
         gap: 24px;
       }
 
+      #settings-screen {
+        height: 650px;
+        overflow-y: auto;
+      }
+
+      #settings-screen.active { gap: 16px; }
+
       .header {
         display: flex;
         align-items: center;
@@ -407,7 +414,7 @@
           </button>
           <div class="title-block">
             <div id="settings-title" class="title">Settings</div>
-            <div class="subtitle">Export format</div>
+            <div class="subtitle">Export format and images</div>
           </div>
         </header>
 
@@ -425,13 +432,40 @@
               <input type="radio" name="format" value="html" />
               <span>
                 <span class="format-name">HTML (.html)</span>
-                <span class="format-description">Self-contained table with Pixso links and embedded JPEG previews.</span>
+                <span class="format-description">Table with Pixso links and an optional JPEG preview for every frame.</span>
               </span>
             </label>
           </div>
         </section>
 
-        <p class="about">Pixso to Spec <span id="plugin-version">v1.0.0</span><br />Created by Mikhail Sarosek.</p>
+        <section class="section">
+          <div class="eyebrow">Images in HTML</div>
+          <div class="format-group">
+            <label class="format-option">
+              <input type="radio" name="image-mode" value="embedded" checked />
+              <span>
+                <span class="format-name">Embedded Base64</span>
+                <span class="format-description">One portable HTML file with JPEG previews embedded inside it.</span>
+              </span>
+            </label>
+            <label class="format-option">
+              <input type="radio" name="image-mode" value="separate" />
+              <span>
+                <span class="format-name">Separate JPEG files</span>
+                <span class="format-description">A ZIP with index.html and JPEG files in the images folder.</span>
+              </span>
+            </label>
+            <label class="format-option">
+              <input type="radio" name="image-mode" value="none" />
+              <span>
+                <span class="format-name">No images</span>
+                <span class="format-description">HTML contains only Pixso links. Markdown never includes images.</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <p class="about">Pixso to Spec <span id="plugin-version">v1.1.0</span><br />Created by Mikhail Sarosek.</p>
       </section>
     </div>
 
@@ -441,6 +475,7 @@
 
         var state = {
           format: "md",
+          imageMode: "embedded",
           theme: "dark",
           exportEnabled: false,
           exporting: false,
@@ -469,9 +504,24 @@
           return selected && selected.value === "html" ? "html" : "md";
         }
 
+        function normalizeImageMode(value) {
+          return value === "separate" || value === "none" ? value : "embedded";
+        }
+
+        function getSelectedImageMode() {
+          var selected = document.querySelector('input[name="image-mode"]:checked');
+          return normalizeImageMode(selected && selected.value);
+        }
+
         function setFormat(format) {
           state.format = format === "html" ? "html" : "md";
           var input = document.querySelector('input[name="format"][value="' + state.format + '"]');
+          if (input) input.checked = true;
+        }
+
+        function setImageMode(imageMode) {
+          state.imageMode = normalizeImageMode(imageMode);
+          var input = document.querySelector('input[name="image-mode"][value="' + state.imageMode + '"]');
           if (input) input.checked = true;
         }
 
@@ -484,6 +534,7 @@
           send({
             type: "save-preferences",
             format: state.format,
+            imageMode: state.imageMode,
             theme: state.theme,
           });
         }
@@ -579,11 +630,24 @@
           return lines.join("\n");
         }
 
-        function buildHtml(meta) {
-          var rows = state.rows.map(function (row) {
-            var image = row.imageDataUri
-              ? '<img src="' + escapeHtml(row.imageDataUri) + '" alt="' + escapeHtml(row.name) + '" />'
-              : '<span class="image-error">JPEG unavailable' + (row.imageError ? ": " + escapeHtml(row.imageError) : "") + "</span>";
+        function imageFilename(row, index) {
+          var number = String(index + 1).padStart(3, "0");
+          return number + "-" + slugify(row.name || "frame") + ".jpg";
+        }
+
+        function buildHtml(meta, imageMode) {
+          var rows = state.rows.map(function (row, index) {
+            var image = "";
+            if (imageMode !== "none") {
+              if (row.imageBase64) {
+                var source = imageMode === "separate"
+                  ? "images/" + imageFilename(row, index)
+                  : "data:image/jpeg;base64," + row.imageBase64;
+                image = '<img src="' + escapeHtml(source) + '" alt="' + escapeHtml(row.name) + '" />';
+              } else {
+                image = '<span class="image-error">JPEG unavailable' + (row.imageError ? ": " + escapeHtml(row.imageError) : "") + "</span>";
+              }
+            }
             return [
               "<tr>",
               "<td><strong>" + escapeHtml(row.name) + "</strong></td>",
@@ -605,7 +669,7 @@
             "th:nth-child(1),td:nth-child(1){width:18%}th:nth-child(2),td:nth-child(2){width:52%}th:nth-child(3),td:nth-child(3){width:30%}",
             "a{display:inline-block;margin-bottom:10px;color:#0068d9}img{display:block;max-width:100%;height:auto;border:1px solid #e1e4e8;border-radius:6px}.image-error{display:block;color:#b4232a}",
             "</style></head><body><div class=\"wrap\"><h1>" + escapeHtml(meta.documentName) + " — Pixso spec</h1>",
-            "<table><thead><tr><th>Frame</th><th>Pixso link &amp; preview</th><th>Description</th></tr></thead><tbody>",
+            "<table><thead><tr><th>Frame</th><th>" + (imageMode === "none" ? "Pixso link" : "Pixso link &amp; preview") + "</th><th>Description</th></tr></thead><tbody>",
             rows,
             "</tbody></table></div></body></html>",
           ].join("\n");
@@ -618,6 +682,109 @@
             .replace(/[^a-z0-9а-яё_-]+/gi, "-")
             .replace(/^-+|-+$/g, "");
           return slug || "pixso-spec";
+        }
+
+        function encodeUtf8(value) {
+          return new TextEncoder().encode(String(value));
+        }
+
+        function decodeBase64(value) {
+          var binary = atob(value);
+          var bytes = new Uint8Array(binary.length);
+          for (var index = 0; index < binary.length; index += 1) {
+            bytes[index] = binary.charCodeAt(index);
+          }
+          return bytes;
+        }
+
+        var crcTable = null;
+
+        function getCrcTable() {
+          if (crcTable) return crcTable;
+          crcTable = new Uint32Array(256);
+          for (var index = 0; index < 256; index += 1) {
+            var value = index;
+            for (var bit = 0; bit < 8; bit += 1) {
+              value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+            }
+            crcTable[index] = value >>> 0;
+          }
+          return crcTable;
+        }
+
+        function crc32(bytes) {
+          var table = getCrcTable();
+          var crc = 0xffffffff;
+          for (var index = 0; index < bytes.length; index += 1) {
+            crc = table[(crc ^ bytes[index]) & 0xff] ^ (crc >>> 8);
+          }
+          return (crc ^ 0xffffffff) >>> 0;
+        }
+
+        function uint16(value) {
+          return new Uint8Array([value & 0xff, (value >>> 8) & 0xff]);
+        }
+
+        function uint32(value) {
+          return new Uint8Array([
+            value & 0xff,
+            (value >>> 8) & 0xff,
+            (value >>> 16) & 0xff,
+            (value >>> 24) & 0xff,
+          ]);
+        }
+
+        function joinBytes(parts) {
+          var length = parts.reduce(function (total, part) { return total + part.length; }, 0);
+          var result = new Uint8Array(length);
+          var offset = 0;
+          parts.forEach(function (part) {
+            result.set(part, offset);
+            offset += part.length;
+          });
+          return result;
+        }
+
+        function zipDateTime(date) {
+          var year = Math.max(1980, date.getFullYear());
+          return {
+            date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
+            time: (date.getHours() << 11) | (date.getMinutes() << 5) | (date.getSeconds() >>> 1),
+          };
+        }
+
+        function buildZip(files) {
+          var localParts = [];
+          var centralParts = [];
+          var offset = 0;
+          var stamp = zipDateTime(new Date());
+
+          files.forEach(function (file) {
+            var name = encodeUtf8(file.name);
+            var data = typeof file.data === "string" ? encodeUtf8(file.data) : file.data;
+            var checksum = crc32(data);
+            var localHeader = joinBytes([
+              uint32(0x04034b50), uint16(20), uint16(0x0800), uint16(0),
+              uint16(stamp.time), uint16(stamp.date), uint32(checksum),
+              uint32(data.length), uint32(data.length), uint16(name.length), uint16(0), name,
+            ]);
+            localParts.push(localHeader, data);
+
+            centralParts.push(joinBytes([
+              uint32(0x02014b50), uint16(20), uint16(20), uint16(0x0800), uint16(0),
+              uint16(stamp.time), uint16(stamp.date), uint32(checksum),
+              uint32(data.length), uint32(data.length), uint16(name.length), uint16(0),
+              uint16(0), uint16(0), uint16(0), uint32(0), uint32(offset), name,
+            ]));
+            offset += localHeader.length + data.length;
+          });
+
+          var centralDirectory = joinBytes(centralParts);
+          var end = joinBytes([
+            uint32(0x06054b50), uint16(0), uint16(0), uint16(files.length),
+            uint16(files.length), uint32(centralDirectory.length), uint32(offset), uint16(0),
+          ]);
+          return joinBytes(localParts.concat([centralDirectory, end]));
         }
 
         function download(content, filename, mimeType) {
@@ -637,10 +804,31 @@
             documentName: message.documentName || "Pixso document",
             exportedAt: message.exportedAt || new Date().toISOString(),
           };
-          var extension = message.format === "html" ? "html" : "md";
-          var content = extension === "html" ? buildHtml(meta) : buildMarkdown(meta);
-          var filename = slugify(meta.documentName) + "-spec." + extension;
-          download(content, filename, extension === "html" ? "text/html;charset=utf-8" : "text/markdown;charset=utf-8");
+          var imageMode = message.format === "html"
+            ? normalizeImageMode(message.imageMode)
+            : "none";
+          var basename = slugify(meta.documentName) + "-spec";
+          var filename = basename + ".md";
+
+          if (message.format === "html" && imageMode === "separate") {
+            var html = buildHtml(meta, imageMode);
+            var files = [{ name: "index.html", data: html }];
+            state.rows.forEach(function (row, index) {
+              if (row.imageBase64) {
+                files.push({
+                  name: "images/" + imageFilename(row, index),
+                  data: decodeBase64(row.imageBase64),
+                });
+              }
+            });
+            filename = basename + ".zip";
+            download(buildZip(files), filename, "application/zip");
+          } else if (message.format === "html") {
+            filename = basename + ".html";
+            download(buildHtml(meta, imageMode), filename, "text/html;charset=utf-8");
+          } else {
+            download(buildMarkdown(meta), filename, "text/markdown;charset=utf-8");
+          }
 
           state.exporting = false;
           progress.classList.remove("visible");
@@ -663,8 +851,9 @@
           if (message.type === "initialize") {
             var preferences = message.preferences || {};
             setFormat(preferences.format);
+            setImageMode(preferences.imageMode);
             setTheme(preferences.theme);
-            document.getElementById("plugin-version").textContent = "v" + (message.pluginVersion || "1.0.0");
+            document.getElementById("plugin-version").textContent = "v" + (message.pluginVersion || "1.1.0");
             return;
           }
 
@@ -723,10 +912,22 @@
           });
         });
 
+        document.querySelectorAll('input[name="image-mode"]').forEach(function (input) {
+          input.addEventListener("change", function () {
+            state.imageMode = getSelectedImageMode();
+            savePreferences();
+          });
+        });
+
         exportButton.addEventListener("click", function () {
           if (!state.exportEnabled || state.exporting) return;
           state.format = getSelectedFormat();
-          send({ type: "request-export", format: state.format });
+          state.imageMode = getSelectedImageMode();
+          send({
+            type: "request-export",
+            format: state.format,
+            imageMode: state.imageMode,
+          });
         });
 
         send({ type: "request-selection" });

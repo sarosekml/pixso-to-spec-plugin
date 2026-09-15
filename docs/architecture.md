@@ -8,18 +8,21 @@ Pixso selectionchange
         ▼
 code.js: фильтр FRAME + parent PAGE ─► ui.html: состояние кнопки
         │
-        │ request-export (md/html)
+        │ request-export (md/html + imageMode)
         ▼
 code.js: snapshot выбранных верхнеуровневых фреймов
         ├─ имя
         ├─ URL: origin + fileKey + page-id + item-id
         ├─ поиск TEXT[name=description]
-        └─ HTML only: frame.exportAsync(JPG)
+        └─ HTML embedded/separate: frame.exportAsync(JPG)
                  │
                  ▼ export-row (по одному фрейму)
 ui.html: экранирование и сборка таблицы
         ├─ Markdown: ссылка без изображения
-        └─ HTML: ссылка + JPEG data URI
+        └─ HTML:
+             ├─ embedded: ссылка + JPEG data URI → .html
+             ├─ separate: ссылка + images/*.jpg → .zip
+             └─ none: только ссылка → .html
                  │
                  ▼
            один Blob download
@@ -27,9 +30,11 @@ ui.html: экранирование и сборка таблицы
 
 ## Почему две части
 
-Sandbox Pixso имеет доступ к документу, выделению, `fileKey` и `FrameNode.exportAsync`, но не к DOM и браузерному скачиванию. UI iframe имеет DOM, `Blob` и `URL.createObjectURL`, но не имеет прямого доступа к Pixso document API. Поэтому sandbox передаёт UI нормализованные строки и JPEG data URI сообщениями.
+Sandbox Pixso имеет доступ к документу, выделению, `fileKey` и `FrameNode.exportAsync`, но не к DOM и браузерному скачиванию. UI iframe имеет DOM, `Blob` и `URL.createObjectURL`, но не имеет прямого доступа к Pixso document API. Поэтому sandbox передаёт UI нормализованные строки и JPEG в Base64 сообщениями. UI либо добавляет префикс data URI, либо декодирует байты в отдельный `.jpg`, либо вообще не запрашивает изображение.
 
 Строки HTML отправляются по одной, а не одним общим объектом. Это снижает пиковый размер сообщения при экспорте нескольких больших фреймов и позволяет обновлять прогресс после каждого кадра.
+
+ZIP формируется прямо в UI без внешних библиотек и без сжатия: `index.html` и JPEG уже компактны, а store-режим сохраняет реализацию автономной. Один экспорт всегда вызывает ровно одно браузерное скачивание.
 
 ## Граница верхнего уровня
 

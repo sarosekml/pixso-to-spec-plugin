@@ -32,6 +32,11 @@ function normalizeFormat(value) {
   return value === "html" ? "html" : "md";
 }
 
+function normalizeImageMode(value) {
+  if (value === "separate" || value === "none") return value;
+  return "embedded";
+}
+
 function normalizeTheme(value) {
   var theme = String(value || "").toLowerCase();
   return theme.indexOf("light") !== -1 ? "light" : "dark";
@@ -192,7 +197,7 @@ async function encodeBytes(bytes) {
   return encoded;
 }
 
-async function exportFrameJpeg(frame) {
+async function exportFrameJpegBase64(frame) {
   if (!frame || typeof frame.exportAsync !== "function") {
     throw new Error("Frame does not support image export.");
   }
@@ -202,7 +207,7 @@ async function exportFrameJpeg(frame) {
     constraint: { type: "SCALE", value: 1 },
   });
 
-  return "data:image/jpeg;base64," + (await encodeBytes(bytes));
+  return encodeBytes(bytes);
 }
 
 function getDocumentName() {
@@ -217,6 +222,7 @@ function getDocumentName() {
 async function savePreferences(message) {
   var preferences = {
     format: normalizeFormat(message && message.format),
+    imageMode: normalizeImageMode(message && message.imageMode),
     theme: normalizeTheme(message && message.theme),
   };
   await pixso.clientStorage.setAsync(PREFERENCES_KEY, preferences);
@@ -235,14 +241,16 @@ async function loadPreferences() {
 
   return {
     format: normalizeFormat(saved && saved.format),
+    imageMode: normalizeImageMode(saved && saved.imageMode),
     theme: saved && saved.theme ? normalizeTheme(saved.theme) : currentTheme,
   };
 }
 
-async function runExport(formatValue) {
+async function runExport(formatValue, imageModeValue) {
   if (exportInProgress) return;
 
   var format = normalizeFormat(formatValue);
+  var imageMode = format === "html" ? normalizeImageMode(imageModeValue) : "none";
   var frames = getSelectedFrames().slice();
   if (frames.length === 0) {
     postMessage({
@@ -255,7 +263,12 @@ async function runExport(formatValue) {
 
   exportInProgress = true;
   publishSelection();
-  postMessage({ type: "export-start", format: format, total: frames.length });
+  postMessage({
+    type: "export-start",
+    format: format,
+    imageMode: imageMode,
+    total: frames.length,
+  });
 
   var warnings = [];
   try {
@@ -266,13 +279,13 @@ async function runExport(formatValue) {
         name: frame.name || "Untitled frame",
         url: buildFrameUrl(frame),
         description: await findDescriptionText(frame),
-        imageDataUri: "",
+        imageBase64: "",
         imageError: "",
       };
 
-      if (format === "html") {
+      if (format === "html" && imageMode !== "none") {
         try {
-          row.imageDataUri = await exportFrameJpeg(frame);
+          row.imageBase64 = await exportFrameJpegBase64(frame);
         } catch (imageError) {
           row.imageError = errorMessage(imageError);
           warnings.push(row.name + ": " + row.imageError);
@@ -290,6 +303,7 @@ async function runExport(formatValue) {
     postMessage({
       type: "export-complete",
       format: format,
+      imageMode: imageMode,
       total: frames.length,
       documentName: getDocumentName(),
       exportedAt: new Date().toISOString(),
@@ -322,7 +336,7 @@ async function handleUiMessage(message) {
   if (!message || typeof message.type !== "string") return;
 
   if (message.type === "request-export") {
-    await runExport(message.format);
+    await runExport(message.format, message.imageMode);
     return;
   }
 
@@ -340,7 +354,7 @@ async function initializePlugin() {
   postMessage({
     type: "initialize",
     preferences: await loadPreferences(),
-    pluginVersion: "1.0.0",
+    pluginVersion: "1.1.0",
   });
   publishSelection();
 }
