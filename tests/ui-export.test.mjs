@@ -50,16 +50,15 @@ function loadUi() {
     "selection-title", "selection-help", "frame-list", "progress",
     "progress-label", "progress-value", "progress-bar", "status",
     "theme-toggle", "settings-open", "settings-back", "plugin-version",
+    "html-format-option", "html-image-options",
   ].forEach((id) => elements.set(id, createElement(id)));
 
-  const formatInputs = [
-    { value: "md", checked: true, addEventListener() {} },
-    { value: "html", checked: false, addEventListener() {} },
-  ];
+  const makeInput = (value, checked) => Object.assign(createElement(), { value, checked });
+  const formatInputs = [makeInput("md", true), makeInput("html", false)];
   const imageInputs = [
-    { value: "embedded", checked: true, addEventListener() {} },
-    { value: "separate", checked: false, addEventListener() {} },
-    { value: "none", checked: false, addEventListener() {} },
+    makeInput("embedded", true),
+    makeInput("separate", false),
+    makeInput("none", false),
   ];
   const downloads = [];
   let pendingBlob = null;
@@ -114,19 +113,41 @@ function loadUi() {
     atob,
   });
   new vm.Script(inlineScript, { filename: "ui.html#script" }).runInContext(context);
-  return { window, downloads };
+  return { window, downloads, elements, formatInputs };
 }
 
 function messageUi(runtime, message) {
   runtime.window.onmessage({ data: { pluginMessage: message } });
 }
 
+test("HTML image settings are disabled for Markdown and enabled for HTML", () => {
+  const runtime = loadUi();
+  const imageOptions = runtime.elements.get("html-image-options");
+
+  messageUi(runtime, {
+    type: "initialize",
+    preferences: { format: "md", imageMode: "embedded", theme: "dark" },
+    pluginVersion: "1.1.1",
+  });
+  assert.equal(imageOptions.disabled, true);
+
+  runtime.formatInputs[0].checked = false;
+  runtime.formatInputs[1].checked = true;
+  runtime.formatInputs[1].onchange();
+  assert.equal(imageOptions.disabled, false);
+
+  runtime.formatInputs[0].checked = true;
+  runtime.formatInputs[1].checked = false;
+  runtime.formatInputs[0].onchange();
+  assert.equal(imageOptions.disabled, true);
+});
+
 test("separate JPEG mode downloads one ZIP with HTML and image entries", async () => {
   const runtime = loadUi();
   messageUi(runtime, {
     type: "initialize",
     preferences: { format: "html", imageMode: "separate", theme: "dark" },
-    pluginVersion: "1.1.0",
+    pluginVersion: "1.1.1",
   });
   messageUi(runtime, { type: "export-start", format: "html", imageMode: "separate", total: 1 });
   messageUi(runtime, {

@@ -354,7 +354,7 @@ async function initializePlugin() {
   postMessage({
     type: "initialize",
     preferences: await loadPreferences(),
-    pluginVersion: "1.1.0",
+    pluginVersion: "1.1.1",
   });
   publishSelection();
 }

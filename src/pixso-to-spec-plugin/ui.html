@@ -93,10 +93,11 @@
 
       #settings-screen {
         height: 650px;
-        overflow-y: auto;
+        overflow: hidden;
+        padding: 16px 20px;
       }
 
-      #settings-screen.active { gap: 16px; }
+      #settings-screen.active { gap: 14px; }
 
       .header {
         display: flex;
@@ -313,7 +314,26 @@
         cursor: pointer;
       }
 
-      .format-option:has(input:checked) { border-color: var(--primary); }
+      .format-option:has(> input:checked) { border-color: var(--primary); }
+
+      .format-option-html {
+        display: block;
+        padding: 0;
+        cursor: default;
+      }
+
+      .format-option-html:has(> .format-header input:checked) {
+        border-color: var(--primary);
+      }
+
+      .format-header {
+        display: grid;
+        grid-template-columns: 20px 1fr;
+        gap: 10px;
+        align-items: start;
+        padding: 10px 12px;
+        cursor: pointer;
+      }
 
       .format-option input {
         width: 18px;
@@ -331,10 +351,95 @@
 
       .format-description {
         display: block;
-        margin-top: 3px;
+        margin-top: 2px;
         color: var(--muted);
+        font-size: 11px;
+        line-height: 16px;
+      }
+
+      .image-options {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 4px;
+        min-width: 0;
+        margin: 0 10px 10px 42px;
+        padding: 8px 0 0;
+        border: 0;
+        border-top: 1px solid var(--border);
+        transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .image-options legend {
+        padding: 0 6px 0 0;
+        color: var(--label);
+        font-size: 10px;
+        line-height: 14px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .image-option {
+        display: grid;
+        grid-template-columns: 16px 1fr;
+        gap: 8px;
+        align-items: center;
+        min-width: 0;
+        padding: 5px 7px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .image-option:hover { background: var(--surface-hover); }
+
+      .image-option:has(input:checked) {
+        background: var(--surface);
+        border-color: var(--border);
+      }
+
+      .image-option input {
+        width: 14px;
+        height: 14px;
+        margin: 0;
+        accent-color: var(--primary);
+      }
+
+      .image-option-copy {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        min-width: 0;
+        gap: 8px;
+      }
+
+      .image-option-name {
+        color: var(--text);
         font-size: 12px;
-        line-height: 18px;
+        line-height: 16px;
+        font-weight: 600;
+      }
+
+      .image-option-description {
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 14px;
+        text-align: right;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .format-option-html.image-disabled .image-options {
+        opacity: 0.42;
+      }
+
+      .format-option-html.image-disabled .image-option {
+        cursor: not-allowed;
+      }
+
+      .format-option-html.image-disabled .image-option:hover {
+        background: transparent;
       }
 
       .about {
@@ -425,47 +530,46 @@
               <input type="radio" name="format" value="md" checked />
               <span>
                 <span class="format-name">Markdown (.md)</span>
-                <span class="format-description">Table with frame name, Pixso link, and description. Images are not exported.</span>
+                <span class="format-description">Links and descriptions, without images.</span>
               </span>
             </label>
-            <label class="format-option">
-              <input type="radio" name="format" value="html" />
-              <span>
-                <span class="format-name">HTML (.html)</span>
-                <span class="format-description">Table with Pixso links and an optional JPEG preview for every frame.</span>
-              </span>
-            </label>
+            <div id="html-format-option" class="format-option format-option-html image-disabled">
+              <label class="format-header">
+                <input type="radio" name="format" value="html" />
+                <span>
+                  <span class="format-name">HTML (.html)</span>
+                  <span class="format-description">Links, descriptions, and optional JPEG previews.</span>
+                </span>
+              </label>
+              <fieldset id="html-image-options" class="image-options" disabled>
+                <legend>Images</legend>
+                <label class="image-option">
+                  <input type="radio" name="image-mode" value="embedded" checked />
+                  <span class="image-option-copy">
+                    <span class="image-option-name">Embedded Base64</span>
+                    <span class="image-option-description">One .html</span>
+                  </span>
+                </label>
+                <label class="image-option">
+                  <input type="radio" name="image-mode" value="separate" />
+                  <span class="image-option-copy">
+                    <span class="image-option-name">Separate JPEG</span>
+                    <span class="image-option-description">.zip + images/</span>
+                  </span>
+                </label>
+                <label class="image-option">
+                  <input type="radio" name="image-mode" value="none" />
+                  <span class="image-option-copy">
+                    <span class="image-option-name">No images</span>
+                    <span class="image-option-description">Links only</span>
+                  </span>
+                </label>
+              </fieldset>
+            </div>
           </div>
         </section>
 
-        <section class="section">
-          <div class="eyebrow">Images in HTML</div>
-          <div class="format-group">
-            <label class="format-option">
-              <input type="radio" name="image-mode" value="embedded" checked />
-              <span>
-                <span class="format-name">Embedded Base64</span>
-                <span class="format-description">One portable HTML file with JPEG previews embedded inside it.</span>
-              </span>
-            </label>
-            <label class="format-option">
-              <input type="radio" name="image-mode" value="separate" />
-              <span>
-                <span class="format-name">Separate JPEG files</span>
-                <span class="format-description">A ZIP with index.html and JPEG files in the images folder.</span>
-              </span>
-            </label>
-            <label class="format-option">
-              <input type="radio" name="image-mode" value="none" />
-              <span>
-                <span class="format-name">No images</span>
-                <span class="format-description">HTML contains only Pixso links. Markdown never includes images.</span>
-              </span>
-            </label>
-          </div>
-        </section>
-
-        <p class="about">Pixso to Spec <span id="plugin-version">v1.1.0</span><br />Created by Mikhail Sarosek.</p>
+        <p class="about">Pixso to Spec <span id="plugin-version">v1.1.1</span><br />Created by Mikhail Sarosek.</p>
       </section>
     </div>
 
@@ -494,6 +598,8 @@
         var progressValue = document.getElementById("progress-value");
         var progressBar = document.getElementById("progress-bar");
         var status = document.getElementById("status");
+        var htmlFormatOption = document.getElementById("html-format-option");
+        var htmlImageOptions = document.getElementById("html-image-options");
 
         function send(message) {
           window.parent.postMessage({ pluginMessage: message }, "*");
@@ -517,6 +623,13 @@
           state.format = format === "html" ? "html" : "md";
           var input = document.querySelector('input[name="format"][value="' + state.format + '"]');
           if (input) input.checked = true;
+          syncImageOptions();
+        }
+
+        function syncImageOptions() {
+          var enabled = state.format === "html";
+          htmlImageOptions.disabled = !enabled;
+          htmlFormatOption.classList.toggle("image-disabled", !enabled);
         }
 
         function setImageMode(imageMode) {
@@ -853,7 +966,7 @@
             setFormat(preferences.format);
             setImageMode(preferences.imageMode);
             setTheme(preferences.theme);
-            document.getElementById("plugin-version").textContent = "v" + (message.pluginVersion || "1.1.0");
+            document.getElementById("plugin-version").textContent = "v" + (message.pluginVersion || "1.1.1");
             return;
           }
 
@@ -908,6 +1021,7 @@
         document.querySelectorAll('input[name="format"]').forEach(function (input) {
           input.addEventListener("change", function () {
             state.format = getSelectedFormat();
+            syncImageOptions();
             savePreferences();
           });
         });

@@ -1,7 +1,7 @@
 {
   "name": "Pixso to Spec",
   "id": "pixso_to_spec",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "plugin",
   "main": "code.js",
   "ui": "ui.html",
