@@ -203,23 +203,89 @@
 
       .frame-list {
         display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 190px;
+        overflow-x: hidden;
+        overflow-y: auto;
         margin-top: 10px;
+        padding-right: 2px;
       }
 
-      .frame-chip {
-        max-width: 100%;
-        overflow: hidden;
-        padding: 4px 8px;
+      .frame-item {
+        position: relative;
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr) 28px;
+        align-items: center;
+        min-height: 34px;
         color: var(--label);
         background: var(--input);
         border: 1px solid var(--border);
-        border-radius: 4px;
-        font-size: 11px;
+        border-radius: 6px;
+        transition:
+          opacity 140ms cubic-bezier(0.22, 1, 0.36, 1),
+          background 140ms cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 140ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .frame-item:hover { background: var(--surface-hover); }
+
+      .frame-item.dragging { opacity: 0.42; }
+
+      .frame-item.drop-before {
+        box-shadow: inset 0 2px 0 var(--primary);
+      }
+
+      .frame-item.drop-after {
+        box-shadow: inset 0 -2px 0 var(--primary);
+      }
+
+      .frame-number {
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 14px;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .frame-name {
+        min-width: 0;
+        overflow: hidden;
+        padding: 0 6px;
+        color: var(--text);
+        font-size: 12px;
         line-height: 16px;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+
+      .drag-handle {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 32px;
+        margin: 0;
+        padding: 0;
+        color: var(--muted);
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        cursor: grab;
+      }
+
+      .drag-handle:hover,
+      .drag-handle:focus-visible {
+        color: var(--text);
+        background: var(--surface);
+      }
+
+      .drag-handle:active { cursor: grabbing; }
+
+      .drag-handle svg {
+        display: block;
+        width: 18px;
+        height: 18px;
+        pointer-events: none;
       }
 
       .primary-button {
@@ -492,7 +558,7 @@
               <span id="selection-title">No frames selected</span>
             </div>
             <p id="selection-help" class="selection-help">Select one or more top-level frames on the current Pixso page.</p>
-            <div id="frame-list" class="frame-list" aria-live="polite"></div>
+            <div id="frame-list" class="frame-list" role="list" aria-label="Export row order" aria-live="polite"></div>
           </div>
           <button id="export-button" class="primary-button" type="button" disabled>Export spec</button>
         </section>
@@ -569,7 +635,7 @@
           </div>
         </section>
 
-        <p class="about">Pixso to Spec <span id="plugin-version">v1.1.1</span><br />Created by Mikhail Sarosek.</p>
+        <p class="about">Pixso to Spec <span id="plugin-version">v1.2.0</span><br />Created by Mikhail Sarosek.</p>
       </section>
     </div>
 
@@ -583,8 +649,11 @@
           theme: "dark",
           exportEnabled: false,
           exporting: false,
+          frames: [],
           rows: [],
         };
+
+        var draggedFrameId = "";
 
         var mainScreen = document.getElementById("main-screen");
         var settingsScreen = document.getElementById("settings-screen");
@@ -676,28 +745,192 @@
           exportButton.textContent = state.exporting ? "Exporting…" : "Export spec";
         }
 
+        function reconcileFrameOrder(incomingFrames) {
+          var incomingById = Object.create(null);
+          var included = Object.create(null);
+          var ordered = [];
+
+          incomingFrames.forEach(function (frame) {
+            incomingById[String(frame.id)] = frame;
+          });
+
+          state.frames.forEach(function (frame) {
+            var key = String(frame.id);
+            if (incomingById[key] && !included[key]) {
+              ordered.push(incomingById[key]);
+              included[key] = true;
+            }
+          });
+
+          incomingFrames.forEach(function (frame) {
+            var key = String(frame.id);
+            if (!included[key]) {
+              ordered.push(frame);
+              included[key] = true;
+            }
+          });
+
+          state.frames = ordered;
+        }
+
+        function clearDropIndicators() {
+          Array.prototype.forEach.call(frameList.children, function (item) {
+            item.classList.remove("drop-before");
+            item.classList.remove("drop-after");
+          });
+        }
+
+        function moveFrame(frameId, targetId, placeAfter) {
+          var movingIndex = state.frames.findIndex(function (frame) {
+            return String(frame.id) === String(frameId);
+          });
+          if (movingIndex < 0) return -1;
+
+          var nextFrames = state.frames.slice();
+          var movingFrame = nextFrames.splice(movingIndex, 1)[0];
+          var targetIndex = nextFrames.findIndex(function (frame) {
+            return String(frame.id) === String(targetId);
+          });
+          if (targetIndex < 0) return -1;
+
+          var insertionIndex = targetIndex + (placeAfter ? 1 : 0);
+          nextFrames.splice(insertionIndex, 0, movingFrame);
+          state.frames = nextFrames;
+          renderFrameList();
+          setStatus(
+            "Order updated: " + (movingFrame.name || "Untitled frame") +
+              " is row " + (insertionIndex + 1) + ".",
+            "success"
+          );
+          return insertionIndex;
+        }
+
+        function dragHandleSvg() {
+          return [
+            '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">',
+            '<path d="M14 18C14 18.5523 14.4477 19 15 19C15.5523 19 16 18.5523 16 18C16 17.4477 15.5523 17 15 17C14.4477 17 14 17.4477 14 18Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            '<path d="M8 18C8 18.5523 8.44772 19 9 19C9.55228 19 10 18.5523 10 18C10 17.4477 9.55228 17 9 17C8.44772 17 8 17.4477 8 18Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            '<path d="M14 12C14 12.5523 14.4477 13 15 13C15.5523 13 16 12.5523 16 12C16 11.4477 15.5523 11 15 11C14.4477 11 14 11.4477 14 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            '<path d="M8 12C8 12.5523 8.44772 13 9 13C9.55228 13 10 12.5523 10 12C10 11.4477 9.55228 11 9 11C8.44772 11 8 11.4477 8 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            '<path d="M14 6C14 6.55228 14.4477 7 15 7C15.5523 7 16 6.55228 16 6C16 5.44772 15.5523 5 15 5C14.4477 5 14 5.44772 14 6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            '<path d="M8 6C8 6.55228 8.44772 7 9 7C9.55228 7 10 6.55228 10 6C10 5.44772 9.55228 5 9 5C8.44772 5 8 5.44772 8 6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            "</svg>",
+          ].join("");
+        }
+
+        function renderFrameList() {
+          frameList.replaceChildren();
+          state.frames.forEach(function (frame, index) {
+            var item = document.createElement("div");
+            item.className = "frame-item";
+            item.setAttribute("role", "listitem");
+            item.dataset.frameId = String(frame.id);
+
+            var number = document.createElement("span");
+            number.className = "frame-number";
+            number.textContent = String(index + 1);
+            number.setAttribute("aria-hidden", "true");
+
+            var name = document.createElement("span");
+            name.className = "frame-name";
+            name.textContent = frame.name || "Untitled frame";
+            name.title = frame.name || "Untitled frame";
+
+            var handle = document.createElement("button");
+            handle.type = "button";
+            handle.className = "drag-handle";
+            handle.draggable = true;
+            handle.innerHTML = dragHandleSvg();
+            handle.title = "Drag to reorder";
+            handle.setAttribute(
+              "aria-label",
+              "Move " + (frame.name || "Untitled frame") +
+                ", row " + (index + 1) + ". Use up and down arrow keys."
+            );
+
+            handle.addEventListener("dragstart", function (event) {
+              draggedFrameId = String(frame.id);
+              item.classList.add("dragging");
+              if (event.dataTransfer) {
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", draggedFrameId);
+              }
+            });
+
+            handle.addEventListener("dragend", function () {
+              draggedFrameId = "";
+              item.classList.remove("dragging");
+              clearDropIndicators();
+            });
+
+            handle.addEventListener("keydown", function (event) {
+              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+              var offset = event.key === "ArrowUp" ? -1 : 1;
+              var targetIndex = index + offset;
+              if (targetIndex < 0 || targetIndex >= state.frames.length) return;
+              event.preventDefault();
+              var movedIndex = moveFrame(
+                frame.id,
+                state.frames[targetIndex].id,
+                offset > 0
+              );
+              var movedItem = movedIndex >= 0 ? frameList.children[movedIndex] : null;
+              var movedHandle = movedItem && movedItem.children[2];
+              if (movedHandle && typeof movedHandle.focus === "function") {
+                movedHandle.focus();
+              }
+            });
+
+            item.addEventListener("dragover", function (event) {
+              if (!draggedFrameId || draggedFrameId === String(frame.id)) return;
+              event.preventDefault();
+              if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+              var bounds = item.getBoundingClientRect();
+              var placeAfter = event.clientY >= bounds.top + bounds.height / 2;
+              clearDropIndicators();
+              item.classList.add(placeAfter ? "drop-after" : "drop-before");
+              item.dataset.dropAfter = placeAfter ? "true" : "false";
+            });
+
+            item.addEventListener("drop", function (event) {
+              if (!draggedFrameId || draggedFrameId === String(frame.id)) return;
+              event.preventDefault();
+              moveFrame(
+                draggedFrameId,
+                frame.id,
+                item.dataset.dropAfter === "true"
+              );
+              draggedFrameId = "";
+              clearDropIndicators();
+            });
+
+            item.appendChild(number);
+            item.appendChild(name);
+            item.appendChild(handle);
+            frameList.appendChild(item);
+          });
+        }
+
         function renderSelection(message) {
           state.exportEnabled = message.exportEnabled === true;
-          var frames = Array.isArray(message.frames) ? message.frames : [];
+          var incomingFrames = Array.isArray(message.frames) ? message.frames : [];
+          reconcileFrameOrder(incomingFrames);
+          var frames = state.frames;
           selectionCard.classList.toggle("ready", frames.length > 0);
           selectionTitle.textContent = frames.length === 0
             ? "No frames selected"
             : frames.length + (frames.length === 1 ? " frame selected" : " frames selected");
           selectionHelp.textContent = frames.length === 0
             ? "Select one or more top-level frames on the current Pixso page."
-            : "Ready to export as " + state.format.toUpperCase() + ".";
-          frameList.replaceChildren();
-          frames.forEach(function (frame) {
-            var chip = document.createElement("span");
-            chip.className = "frame-chip";
-            chip.textContent = frame.name || "Untitled frame";
-            chip.title = frame.name || "Untitled frame";
-            frameList.appendChild(chip);
-          });
+            : frames.length === 1
+              ? "This frame will become table row 1."
+              : "Drag the handles to set the table row order.";
+          renderFrameList();
           if (!state.exporting) {
             setStatus(
               frames.length > 0
-                ? "The export will contain " + frames.length + " table row(s)."
+                ? "The export will contain " + frames.length +
+                  " row(s) in the order shown above."
                 : "Choose frames in Pixso to enable export.",
               frames.length > 0 ? "success" : ""
             );
@@ -966,7 +1199,7 @@
             setFormat(preferences.format);
             setImageMode(preferences.imageMode);
             setTheme(preferences.theme);
-            document.getElementById("plugin-version").textContent = "v" + (message.pluginVersion || "1.1.1");
+            document.getElementById("plugin-version").textContent = "v" + (message.pluginVersion || "1.2.0");
             return;
           }
 
@@ -1041,6 +1274,7 @@
             type: "request-export",
             format: state.format,
             imageMode: state.imageMode,
+            frameIds: state.frames.map(function (frame) { return frame.id; }),
           });
         });
 

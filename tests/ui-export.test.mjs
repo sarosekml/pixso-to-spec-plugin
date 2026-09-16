@@ -30,14 +30,20 @@ function createElement(id = "") {
     id,
     className: "",
     classList: createClassList(),
+    dataset: {},
     style: {},
     textContent: "",
+    innerHTML: "",
     title: "",
     disabled: false,
     children: [],
+    attributes: {},
     addEventListener(type, callback) { this[`on${type}`] = callback; },
     appendChild(child) { this.children.push(child); },
     replaceChildren(...children) { this.children = children; },
+    setAttribute(name, value) { this.attributes[name] = String(value); },
+    getBoundingClientRect() { return { top: 0, height: 34 }; },
+    focus() { this.focused = true; },
     remove() {},
     click() {},
   };
@@ -61,6 +67,7 @@ function loadUi() {
     makeInput("none", false),
   ];
   const downloads = [];
+  const sentMessages = [];
   let pendingBlob = null;
 
   const document = {
@@ -87,7 +94,9 @@ function loadUi() {
   };
 
   const window = {
-    parent: { postMessage() {} },
+    parent: {
+      postMessage(message) { sentMessages.push(message.pluginMessage); },
+    },
     setTimeout(callback) { callback(); },
     onmessage: null,
   };
@@ -113,7 +122,7 @@ function loadUi() {
     atob,
   });
   new vm.Script(inlineScript, { filename: "ui.html#script" }).runInContext(context);
-  return { window, downloads, elements, formatInputs };
+  return { window, downloads, elements, formatInputs, sentMessages };
 }
 
 function messageUi(runtime, message) {
@@ -127,7 +136,7 @@ test("HTML image settings are disabled for Markdown and enabled for HTML", () =>
   messageUi(runtime, {
     type: "initialize",
     preferences: { format: "md", imageMode: "embedded", theme: "dark" },
-    pluginVersion: "1.1.1",
+    pluginVersion: "1.2.0",
   });
   assert.equal(imageOptions.disabled, true);
 
@@ -142,12 +151,57 @@ test("HTML image settings are disabled for Markdown and enabled for HTML", () =>
   assert.equal(imageOptions.disabled, true);
 });
 
+test("dragging selected frames changes the requested export row order", () => {
+  const runtime = loadUi();
+  const frames = [
+    { id: "7:1", name: "First" },
+    { id: "7:2", name: "Second" },
+    { id: "7:3", name: "Third" },
+  ];
+  messageUi(runtime, {
+    type: "selection-state",
+    exportEnabled: true,
+    frames,
+  });
+
+  const frameList = runtime.elements.get("frame-list");
+  assert.deepEqual(
+    frameList.children.map((item) => item.children[0].textContent),
+    ["1", "2", "3"]
+  );
+
+  const firstHandle = frameList.children[0].children[2];
+  const thirdItem = frameList.children[2];
+  const dataTransfer = { effectAllowed: "", dropEffect: "", setData() {} };
+  firstHandle.ondragstart({ dataTransfer });
+  thirdItem.ondragover({
+    clientY: 30,
+    dataTransfer,
+    preventDefault() {},
+  });
+  thirdItem.ondrop({ preventDefault() {} });
+
+  assert.deepEqual(
+    frameList.children.map((item) => item.children[1].textContent),
+    ["Second", "Third", "First"]
+  );
+  assert.deepEqual(
+    frameList.children.map((item) => item.children[0].textContent),
+    ["1", "2", "3"]
+  );
+
+  runtime.sentMessages.length = 0;
+  runtime.elements.get("export-button").onclick();
+  const request = runtime.sentMessages.find((message) => message.type === "request-export");
+  assert.deepEqual(Array.from(request.frameIds), ["7:2", "7:3", "7:1"]);
+});
+
 test("separate JPEG mode downloads one ZIP with HTML and image entries", async () => {
   const runtime = loadUi();
   messageUi(runtime, {
     type: "initialize",
     preferences: { format: "html", imageMode: "separate", theme: "dark" },
-    pluginVersion: "1.1.1",
+    pluginVersion: "1.2.0",
   });
   messageUi(runtime, { type: "export-start", format: "html", imageMode: "separate", total: 1 });
   messageUi(runtime, {

@@ -144,6 +144,26 @@ test("Markdown export emits links and descriptions without rendering JPEGs", asy
   );
 });
 
+test("export follows the validated frame order requested by the UI", async () => {
+  const page = { id: "0:1", type: "PAGE" };
+  const first = makeFrame({ id: "6:1", name: "First", page });
+  const second = makeFrame({ id: "6:2", name: "Second", page });
+  const third = makeFrame({ id: "6:3", name: "Third", page });
+  const runtime = await loadPlugin({ selection: [first, second, third] });
+  runtime.messages.length = 0;
+
+  await runtime.pixso.ui.onmessage({
+    type: "request-export",
+    format: "md",
+    frameIds: ["6:3", "unknown", "6:1", "6:3"],
+  });
+
+  const rows = runtime.messages
+    .filter((message) => message.type === "export-row")
+    .map((message) => message.row.id);
+  assert.deepEqual(rows, ["6:3", "6:1", "6:2"]);
+});
+
 test("HTML embedded mode renders every selected frame as JPEG base64", async () => {
   const page = { id: "0:1", type: "PAGE" };
   const first = makeFrame({ id: "1:1", name: "First", page, bytes: [1, 2, 3] });

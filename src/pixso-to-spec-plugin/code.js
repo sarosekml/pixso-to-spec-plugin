@@ -69,6 +69,35 @@ function getSelectedFrames() {
   });
 }
 
+function orderSelectedFrames(frames, orderedFrameIds) {
+  if (!Array.isArray(orderedFrameIds) || orderedFrameIds.length === 0) {
+    return frames;
+  }
+
+  var framesById = Object.create(null);
+  var included = Object.create(null);
+  var ordered = [];
+
+  frames.forEach(function (frame) {
+    framesById[String(frame.id)] = frame;
+  });
+
+  orderedFrameIds.forEach(function (frameId) {
+    var key = String(frameId || "");
+    if (framesById[key] && !included[key]) {
+      ordered.push(framesById[key]);
+      included[key] = true;
+    }
+  });
+
+  frames.forEach(function (frame) {
+    var key = String(frame.id);
+    if (!included[key]) ordered.push(frame);
+  });
+
+  return ordered;
+}
+
 function getOwnerPage(node) {
   var current = node;
   var guard = 0;
@@ -246,12 +275,12 @@ async function loadPreferences() {
   };
 }
 
-async function runExport(formatValue, imageModeValue) {
+async function runExport(formatValue, imageModeValue, orderedFrameIds) {
   if (exportInProgress) return;
 
   var format = normalizeFormat(formatValue);
   var imageMode = format === "html" ? normalizeImageMode(imageModeValue) : "none";
-  var frames = getSelectedFrames().slice();
+  var frames = orderSelectedFrames(getSelectedFrames().slice(), orderedFrameIds);
   if (frames.length === 0) {
     postMessage({
       type: "export-error",
@@ -336,7 +365,7 @@ async function handleUiMessage(message) {
   if (!message || typeof message.type !== "string") return;
 
   if (message.type === "request-export") {
-    await runExport(message.format, message.imageMode);
+    await runExport(message.format, message.imageMode, message.frameIds);
     return;
   }
 
@@ -354,7 +383,7 @@ async function initializePlugin() {
   postMessage({
     type: "initialize",
     preferences: await loadPreferences(),
-    pluginVersion: "1.1.1",
+    pluginVersion: "1.2.0",
   });
   publishSelection();
 }

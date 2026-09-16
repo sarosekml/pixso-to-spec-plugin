@@ -9,6 +9,10 @@ const outputDir = path.join(projectRoot, "dist", "pixso-to-spec");
 const manifest = JSON.parse(await readFile(path.join(outputDir, "manifest.json"), "utf8"));
 const code = await readFile(path.join(outputDir, manifest.main), "utf8");
 const ui = await readFile(path.join(outputDir, manifest.ui), "utf8");
+const dragIcon = await readFile(
+  path.join(projectRoot, "tests", "Interface", "Drag_Vertical.svg"),
+  "utf8"
+);
 
 assert.equal(manifest.name, "Pixso to Spec");
 assert.equal(manifest.main, "code.js");
@@ -34,6 +38,8 @@ assert.match(ui, /htmlImageOptions\.disabled = !enabled/);
 assert.match(ui, /#settings-screen \{[\s\S]*?overflow: hidden/);
 assert.match(ui, /function buildZip\(files\)/);
 assert.match(ui, /application\/zip/);
+assert.match(ui, /className = "drag-handle"/);
+assert.match(ui, /frameIds: state\.frames\.map/);
 assert.match(ui, /data:image\/png;base64,/);
 assert.doesNotMatch(ui, /src="plugin-icon\.png"/);
 assert.doesNotMatch(ui, /Pixso MCP Connect|Connect Pixso to AI agent/);
@@ -45,6 +51,12 @@ assert.equal(
   1,
   "settings icon must keep the original compound path intact"
 );
+
+const dragIconPaths = Array.from(dragIcon.matchAll(/<path d="([^"]+)"/g), (match) => match[1]);
+assert.equal(dragIconPaths.length, 6, "drag handle source must contain all six dot paths");
+dragIconPaths.forEach((pathData) => {
+  assert.ok(ui.includes(`d="${pathData}"`), "bundled UI must inline the supplied drag handle icon");
+});
 
 const inlineScript = ui.match(/<script>([\s\S]*)<\/script>/);
 assert.ok(inlineScript, "ui.html must contain its inline application script");
